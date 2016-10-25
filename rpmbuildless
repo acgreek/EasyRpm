@@ -1,0 +1,47 @@
+#!/bin/bash -x
+USETEMPDIR=yes
+prefix="/opt/foo"
+name="foo"
+version=1
+dist=0
+summary="default summary"
+group="applications"
+license="MIT"
+url="http://default.com"
+description="default description"
+
+tempdir=$(mktemp -d)
+#tempdir=/tmp/foo
+mkdir -p /tmp/foo
+mkdir  $tempdir/SPECS
+mkdir  $tempdir/SOURCES
+pushd $tempdir/SPECS
+mkdir -p ${tempdir}/BUILDROOT/${prefix}/bin/
+cp $1  ${tempdir}/BUILDROOT/${prefix}/bin/
+echo "Name:           ${name} " > out.spec
+echo "Version:        ${version} " >> out.spec
+echo "Release:        ${dist}" >> out.spec
+echo "Summary:        ${summary}" >> out.spec
+echo "" >> out.spec
+echo "Group:          ${group}" >> out.spec
+echo "License:        ${license}" >> out.spec
+echo "URL:            ${url}" >> out.spec
+echo "Source0:        bla" >> out.spec
+echo "BuildRoot:      ${tempdir}/BUILDROOT" >> out.spec
+echo "" >> out.spec
+#echo "Requires:       " >> out.spec
+#echo "" >> out.spec
+echo "%description" >> out.spec
+echo "${description}" >> out.spec
+echo "" >> out.spec
+echo "%files" >> out.spec
+echo "${prefix}/bin/$(basename ${1})" >> out.spec
+echo "" >> out.spec
+echo "%doc" >> out.spec
+echo "" >> out.spec
+echo "%changelog" >> out.spec
+popd
+rpmbuild -bb --buildroot ${tempdir}/BUILDROOT ${tempdir}/SPECS/out.spec
+
+
+rm -rf $tempdir
