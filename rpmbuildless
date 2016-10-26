@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash 
 USETEMPDIR=yes
 prefix="/opt/foo"
 name="foo"
@@ -10,6 +10,55 @@ license="MIT"
 url="http://default.com"
 description="default description"
 
+let bin_sources_index=0;
+BIN_SOURCES=()
+
+while getopts ":ap:o:V:d:s:g:l:u:D:B:" opt; do
+  case $opt in
+    o)
+      name="${OPTARG}"
+      ;;
+    V)
+      version="${OPTARG}"
+      ;;
+    d)
+      dist="${OPTARG}"
+      ;;
+    s)
+      summary="${OPTARG}"
+      ;;
+    B)
+      BIN_SOURCES[$bin_sources_index]=$OPTARG
+      let bin_sources_index=$bin_sources_index+1
+      ;;
+    g)
+      group="${OPTARG}"
+      ;;
+    l)
+      license="${OPTARG}"
+      ;;
+    u)
+      url="${OPTARG}"
+      ;;
+    d)
+      description="${OPTARG}"
+      ;;
+    p)
+      prefix="${OPTARG}"
+      ;;
+    a)
+      echo "-a was triggered!" >&2
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+    \h)
+      echo "$0 OPTIONS" >&2
+      echo "OPTIONS:" >&2
+      echo "  -p dirprefix     directory prefix for install" >&2
+      ;;
+  esac
+done
 tempdir=$(mktemp -d)
 #tempdir=/tmp/foo
 mkdir -p /tmp/foo
@@ -17,7 +66,10 @@ mkdir  $tempdir/SPECS
 mkdir  $tempdir/SOURCES
 pushd $tempdir/SPECS
 mkdir -p ${tempdir}/BUILDROOT/${prefix}/bin/
-cp $1  ${tempdir}/BUILDROOT/${prefix}/bin/
+for i in ${BIN_SOURCES[*]} 
+do 
+    cp $i  ${tempdir}/BUILDROOT/${prefix}/bin/
+done
 echo "Name:           ${name} " > out.spec
 echo "Version:        ${version} " >> out.spec
 echo "Release:        ${dist}" >> out.spec
@@ -35,7 +87,10 @@ echo "%description" >> out.spec
 echo "${description}" >> out.spec
 echo "" >> out.spec
 echo "%files" >> out.spec
-echo "${prefix}/bin/$(basename ${1})" >> out.spec
+for i in ${BIN_SOURCES[*]} 
+do 
+    echo "${prefix}/bin/$(basename ${i})" >> out.spec
+done
 echo "" >> out.spec
 echo "%doc" >> out.spec
 echo "" >> out.spec
