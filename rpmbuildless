@@ -10,10 +10,39 @@ license="MIT"
 url="http://default.com"
 description="default description"
 
+let requires_index=0;
+REQUIRES=()
+
 let bin_sources_index=0;
 BIN_SOURCES=()
 
-while getopts ":ap:o:V:d:s:g:l:u:D:B:" opt; do
+let lib_sources_index=0;
+LIB_SOURCES=()
+
+function help {
+    echo "$0 [options]" >&2
+    echo "" >&2
+    echo "Options:" >&2
+    echo "  -o name          name/project of rpm (default foo)" >&2
+    echo "  -V version       major version of rpm (default 1)" >&2
+    echo "  -d dist          minor version of rpm (default 0)" >&2
+    echo "  -s summary       rpm summary (default 'default summary')" >&2
+    echo "  -g group         group (default applications)" >&2
+    echo "  -l license       license (default MIT)" >&2
+    echo "  -u url           url to project source (default http://default.com)" >&2
+    echo "  -d description   rpm description" >&2
+    echo "  -p dirprefix     directory prefix for install" >&2
+    echo "  -V dirprefix     directory prefix for install" >&2
+    echo "  -B pathToBinary  path to binaries to include in the rpm in prefix/bin/. This can be used" >&2
+    echo "                   several times on the same commandline to handle multiple binaries" >&2
+    echo "  -L pathTolibrary path to library to include in the rpm in prefix/lib. This can be used" >&2
+    echo "                   several times on the same commandline to handle multiple libraries" >&2
+    echo "  -R requirement   rpm that this rpm requires before install  " >&2
+    echo "                   several times on the same commandline to handle requirements " >&2
+    echo "  -h               display usage instructions" >&2
+}
+
+while getopts "p:o:V:d:s:g:l:u:B:R:L:h" opt; do
   case $opt in
     o)
       name="${OPTARG}"
@@ -31,6 +60,14 @@ while getopts ":ap:o:V:d:s:g:l:u:D:B:" opt; do
       BIN_SOURCES[$bin_sources_index]=$OPTARG
       let bin_sources_index=$bin_sources_index+1
       ;;
+    L)
+      LIB_SOURCES[$lib_sources_index]=$OPTARG
+      let lib_sources_index=$lib_sources_index+1
+      ;;
+    R)
+      REQUIRES[$requires_index]=$OPTARG
+      let requires_index=$requires_index+1
+      ;;
     g)
       group="${OPTARG}"
       ;;
@@ -46,21 +83,26 @@ while getopts ":ap:o:V:d:s:g:l:u:D:B:" opt; do
     p)
       prefix="${OPTARG}"
       ;;
-    a)
-      echo "-a was triggered!" >&2
-      ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
+      help
+      exit -1;
       ;;
     \h)
-      echo "$0 OPTIONS" >&2
-      echo "OPTIONS:" >&2
-      echo "  -p dirprefix     directory prefix for install" >&2
+      help
+      exit 0;
       ;;
   esac
 done
+rpmbuild_app=$(which rpmbuild)
+if [[ "$rpmbuild_app" -eq "" ]]
+then 
+    echo "rpmbuild doesn't appear to be installed."
+    echo "maybe try: sudo yum install rpm-build"
+    exit -2
+fi
+
 tempdir=$(mktemp -d)
-#tempdir=/tmp/foo
 mkdir -p /tmp/foo
 mkdir  $tempdir/SPECS
 mkdir  $tempdir/SOURCES
@@ -70,6 +112,10 @@ for i in ${BIN_SOURCES[*]}
 do 
     cp $i  ${tempdir}/BUILDROOT/${prefix}/bin/
 done
+for i in ${LIB_SOURCES[*]} 
+do 
+    cp $i  ${tempdir}/BUILDROOT/${prefix}/lib/
+done
 echo "Name:           ${name} " > out.spec
 echo "Version:        ${version} " >> out.spec
 echo "Release:        ${dist}" >> out.spec
@@ -78,11 +124,13 @@ echo "" >> out.spec
 echo "Group:          ${group}" >> out.spec
 echo "License:        ${license}" >> out.spec
 echo "URL:            ${url}" >> out.spec
-echo "Source0:        bla" >> out.spec
-echo "BuildRoot:      ${tempdir}/BUILDROOT" >> out.spec
+for i in ${REQUIRES[*]} 
+do 
+    echo "Requires: $i" >> out.spec
+done
 echo "" >> out.spec
-#echo "Requires:       " >> out.spec
-#echo "" >> out.spec
+#echo "Source0:        bla" >> out.spec
+echo "BuildRoot:      ${tempdir}/BUILDROOT" >> out.spec
 echo "%description" >> out.spec
 echo "${description}" >> out.spec
 echo "" >> out.spec
@@ -90,6 +138,10 @@ echo "%files" >> out.spec
 for i in ${BIN_SOURCES[*]} 
 do 
     echo "${prefix}/bin/$(basename ${i})" >> out.spec
+done
+for i in ${LIB_SOURCES[*]} 
+do 
+    echo "${prefix}/lib/$(basename ${i})" >> out.spec
 done
 echo "" >> out.spec
 echo "%doc" >> out.spec
