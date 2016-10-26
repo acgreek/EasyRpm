@@ -1,4 +1,4 @@
-# rpmbuildless
+# easyrpm
 Simplified command-line rpm generation
 
 Generating an rpm using rpmbuild requires too much complexity for the simple case where we have a few binaries we want to package into an
@@ -9,7 +9,7 @@ in a directory you specify in the .spec file.
 rpmbuildless is an attempt to simplify all this by providing an all inclusive commandline that is somewhat modeled after gcc.
 
  
-[osboxes@osboxes rpmbuildless]$ ./rpmbuildless -o bla -V 2 -B /bin/bash -B /sbin/ifconfig <br />
+[osboxes@osboxes rpmbuildless]$ ./easyrpm -o bla -V 2 -B /bin/bash -B /sbin/ifconfig <br />
 /tmp/tmp.cRwPKtXLO4/SPECS ~/rpmbuildless<br />
 ~/rpmbuildless<br />
 Processing files: bla-2-0.x86_64<br />
