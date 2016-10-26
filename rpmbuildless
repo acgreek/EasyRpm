@@ -1,5 +1,6 @@
 #!/bin/bash 
 USETEMPDIR=yes
+destinationdir="."
 prefix="/opt/foo"
 name="foo"
 version=1
@@ -40,7 +41,7 @@ function help {
     echo "  -P packager      packager of rpm (default does not add)" >&2
     echo "  -D Distribution  distribution of rpm is targeted at (default does not add)" >&2
     echo "  -u url           url to project source (default http://default.com)" >&2
-    echo "  -d description   rpm description" >&2
+    echo "  -m description   rpm description" >&2
     echo "  -p dirprefix     directory prefix for install" >&2
     echo "  -B pathToBinary  path to binaries to include in the rpm in prefix/bin/. This can be used" >&2
     echo "                   several times on the same commandline to handle multiple binaries" >&2
@@ -48,13 +49,25 @@ function help {
     echo "                   several times on the same commandline to handle multiple libraries" >&2
     echo "  -R requirement   rpm that this rpm requires before install  " >&2
     echo "                   several times on the same commandline to handle requirements " >&2
+    echo "  -O directory     directory where rpm will be written to (default .)" >&2
+    echo "  -q pathToScript  prescript (default no script)" >%2
+    echo "  -Q pathToScript  postscript (default no script)" >%2
     echo "  -h               display usage instructions" >&2
 }
 
-while getopts "p:o:V:d:s:g:l:u:B:R:L:v:D:P:h" opt; do
+while getopts "p:o:V:d:s:g:l:u:B:m:R:L:v:D:P:O:Q:q:h" opt; do
   case $opt in
+    Q)
+      postscript="${OPTARG}"
+      ;;
+    q)
+      prescript="${OPTARG}"
+      ;;
     v)
       vendor="${OPTARG}"
+      ;;
+    O)
+      destinationdir="${OPTARG}"
       ;;
     D)
       distribution="${OPTARG}"
@@ -95,7 +108,7 @@ while getopts "p:o:V:d:s:g:l:u:B:R:L:v:D:P:h" opt; do
     u)
       url="${OPTARG}"
       ;;
-    d)
+    m)
       description="${OPTARG}"
       ;;
     p)
@@ -113,7 +126,7 @@ while getopts "p:o:V:d:s:g:l:u:B:R:L:v:D:P:h" opt; do
   esac
 done
 rpmbuild_app=$(which rpmbuild)
-if [[ "$rpmbuild_app" -eq "" ]]
+if [ -z "$rpmbuild_app" ]
 then 
     echo "rpmbuild doesn't appear to be installed."
     echo "maybe try: sudo yum install rpm-build"
@@ -124,6 +137,7 @@ tempdir=$(mktemp -d)
 mkdir -p /tmp/foo
 mkdir  $tempdir/SPECS
 mkdir  $tempdir/SOURCES
+mkdir $tempdir/RPMS
 pushd $tempdir/SPECS
 mkdir -p ${tempdir}/BUILDROOT/${prefix}/bin/
 for i in ${BIN_SOURCES[*]} 
@@ -134,22 +148,23 @@ for i in ${LIB_SOURCES[*]}
 do 
     cp $i  ${tempdir}/BUILDROOT/${prefix}/lib/
 done
-echo "Name:           ${name} " > out.spec
+echo "%define _rpmdir ${tempdir}/RPMS" > out.spec
+echo "Name:           ${name} " >> out.spec
 echo "Version:        ${version} " >> out.spec
 echo "Release:        ${dist}" >> out.spec
 echo "Summary:        ${summary}" >> out.spec
 echo "" >> out.spec
 echo "Group:          ${group}" >> out.spec
 echo "License:        ${license}" >> out.spec
-if [[ "$vendor" -ne "" ]]
+if [ ! -z "${vendor}" ]
 then 
     echo "Vendor:        ${vendor}" >> out.spec
 fi
-if [[ "$distribution" -ne "" ]]
+if [ ! -z "${distribution}" ]
 then 
     echo "Distribution:        ${distribution}" >> out.spec
 fi
-if [[ "$packager" -ne "" ]]
+if [ ! -z "$packager" ]
 then 
     echo "Packager:        ${packager}" >> out.spec
 fi
@@ -164,6 +179,19 @@ echo "BuildRoot:      ${tempdir}/BUILDROOT" >> out.spec
 echo "%description" >> out.spec
 echo "${description}" >> out.spec
 echo "" >> out.spec
+if [ ! -z "$prescript" ] 
+then 
+    echo "%pre" >> out.spec
+    cat $prescript >> out.spec
+    echo "" >> out.spec
+fi;
+if [ ! -z "$postscript" ] 
+then 
+    echo "%post" >> out.spec
+    cat $postscript >> out.spec
+    echo "" >> out.spec
+fi;
+
 echo "%files" >> out.spec
 for i in ${BIN_SOURCES[*]} 
 do 
@@ -182,5 +210,5 @@ echo "%changelog" >> out.spec
 popd
 rpmbuild -bb --buildroot ${tempdir}/BUILDROOT ${tempdir}/SPECS/out.spec
 
-
+find ${tempdir}/RPMS -name "*.rpm" -exec mv -t ${destinationdir} {} +
 rm -rf $tempdir
