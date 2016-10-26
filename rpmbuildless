@@ -9,6 +9,9 @@ group="applications"
 license="MIT"
 url="http://default.com"
 description="default description"
+vendor=
+distribution=
+packager=
 
 let requires_index=0;
 REQUIRES=()
@@ -30,9 +33,12 @@ function help {
     echo "  -g group         group (default applications)" >&2
     echo "  -l license       license (default MIT)" >&2
     echo "  -u url           url to project source (default http://default.com)" >&2
+    echo "  -v vendor        vendor of the rpm (default does not add)" >&2
+    echo "  -P packager      packager of rpm (default does not add)" >&2
+    echo "  -D Distribution  distribution of rpm is targeted at (default does not add)" >&2
+    echo "  -u url           url to project source (default http://default.com)" >&2
     echo "  -d description   rpm description" >&2
     echo "  -p dirprefix     directory prefix for install" >&2
-    echo "  -V dirprefix     directory prefix for install" >&2
     echo "  -B pathToBinary  path to binaries to include in the rpm in prefix/bin/. This can be used" >&2
     echo "                   several times on the same commandline to handle multiple binaries" >&2
     echo "  -L pathTolibrary path to library to include in the rpm in prefix/lib. This can be used" >&2
@@ -42,8 +48,17 @@ function help {
     echo "  -h               display usage instructions" >&2
 }
 
-while getopts "p:o:V:d:s:g:l:u:B:R:L:h" opt; do
+while getopts "p:o:V:d:s:g:l:u:B:R:L:v:D:P:h" opt; do
   case $opt in
+    v)
+      vendor="${OPTARG}"
+      ;;
+    D)
+      distribution="${OPTARG}"
+      ;;
+    P)
+      packager="${OPTARG}"
+      ;;
     o)
       name="${OPTARG}"
       ;;
@@ -123,6 +138,18 @@ echo "Summary:        ${summary}" >> out.spec
 echo "" >> out.spec
 echo "Group:          ${group}" >> out.spec
 echo "License:        ${license}" >> out.spec
+if [[ "$vendor" -ne "" ]]
+then 
+    echo "Vendor:        ${vendor}" >> out.spec
+fi
+if [[ "$distribution" -ne "" ]]
+then 
+    echo "Distribution:        ${distribution}" >> out.spec
+fi
+if [[ "$packager" -ne "" ]]
+then 
+    echo "Packager:        ${packager}" >> out.spec
+fi
 echo "URL:            ${url}" >> out.spec
 for i in ${REQUIRES[*]} 
 do 
@@ -147,6 +174,8 @@ echo "" >> out.spec
 echo "%doc" >> out.spec
 echo "" >> out.spec
 echo "%changelog" >> out.spec
+
+
 popd
 rpmbuild -bb --buildroot ${tempdir}/BUILDROOT ${tempdir}/SPECS/out.spec
 
